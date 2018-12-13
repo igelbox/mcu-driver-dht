@@ -24,6 +24,7 @@ pub enum Type {
 impl Response {
     pub fn decode_temperature(&self, _kind: Type) -> f32 {
         let value = (self.data[2] as i16) << 8 | self.data[3] as i16;
+        let value = if value < 0 { -(value & 0x7fff) } else { value };
         (value as f32) / 10f32
     }
 
@@ -98,5 +99,14 @@ impl<'a> DHT<'a> {
             delay.delay_us(1);
         }
         Err(Error::WaitForStateTimeout{ state, timeout_us })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn response_subzero() {
+        let d = ::Response{ data: [0x02, 0xf9, 0x80, 0x1c, 0x97] };
+        assert_eq!(d.decode_temperature(::Type::DHT22), -2.8);
     }
 }
